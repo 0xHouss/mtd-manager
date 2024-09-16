@@ -1,0 +1,33 @@
+{
+  "name": "mtd-manager",
+  "version": "1.0.0",
+  "description": "Dedicated bot for M&T Developement",
+  "main": "build/index.js",
+  "scripts": {
+    "start": "npm run build && node build/index.js",
+    "build": "rimraf ./build && tsc",
+    "dev": "nodemon src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xHouss/mtd-manager"
+  },
+  "keywords": [],
+  "author": "0xHouss",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OxHouss/mtd-manager/issues"
+  },
+  "homepage": "https://github.com/OxHouss/mtd-manager#README",
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "nodemon": "^3.1.4",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.2",
+    "zod": "^3.23.8"
+  }
+}
