@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, PermissionsBitField, SlashCommandBuilder } from 'discord.js';
-import { startBrowser } from '../lib/puppeteer';
+import { Page } from 'puppeteer';
+import { createPage, startBrowser } from '../lib/puppeteer';
 
 export default {
     data: new SlashCommandBuilder()
@@ -24,29 +25,35 @@ export default {
 
         await interaction.deferReply({ ephemeral: true })
 
-        const { browser, page } = await startBrowser()
+        const { browser, page: blackPage } = await startBrowser()
 
-        await page.goto("http://www.forexalgerie.com")
+        const [eurWhitePage, gbpWhitePage] = await Promise.all([createPage(browser), createPage(browser)])
 
-        const eurBlack = await page.evaluate(() => +document.querySelector<HTMLTableCellElement>("#eurBuy")?.innerText!)
-        const gbpBlack = await page.evaluate(() => +document.querySelector<HTMLTableCellElement>("#gbpBuy")?.innerText!)
+        async function getBlack(page: Page) {
+            await page.goto("http://www.forexalgerie.com")
 
-        await page.goto("https://fcsapi.com/converter/eur/dzd")
+            return await page.evaluate(() => {
+                return {
+                    eurBlack: +document.querySelector<HTMLTableCellElement>("#eurBuy")?.innerText!,
+                    gbpBlack: +document.querySelector<HTMLTableCellElement>("#gbpBuy")?.innerText!
+                }
+            })
+        }
 
-        const eurWhite = Math.floor(await page.evaluate(() => +document.querySelector<HTMLSpanElement>(".converterresult-toAmount")?.innerText!))
+        async function getWhite(page: Page, currency: string) {
+            await page.goto(`https://fcsapi.com/converter/${currency}/dzd`)
 
-        await page.goto("https://fcsapi.com/converter/gbp/dzd")
+            return Math.floor(await page.evaluate(() => +document.querySelector<HTMLSpanElement>(".converterresult-toAmount")?.innerText!))
+        }
 
-        const gbpWhite = Math.floor(await page.evaluate(() => +document.querySelector<HTMLSpanElement>(".converterresult-toAmount")?.innerText!))
+        const [{ eurBlack, gbpBlack }, eurWhite, gbpWhite] = await Promise.all([getBlack(blackPage), getWhite(eurWhitePage, "eur"), getWhite(gbpWhitePage, "gbp")])
 
         const embed = new EmbedBuilder()
             .setTitle("Forex Prices")
-            .addFields(
-                { name: "White Price of 1€:", value: eurWhite + ' DZD', inline: true },
-                { name: "Black Price of 1€:", value: eurBlack + ' DZD', inline: true },
-                { name: "White Price of 1£:", value: gbpWhite + ' DZD', inline: false },
-                { name: "Black Price of 1£:", value: gbpBlack + ' DZD', inline: true },
-            )
+            .setDescription(`
+                EUR: ⬜ ${eurWhite} DZD ⬜ ⬛ ${eurBlack} DZD ⬛
+                GBP: ⬜ ${gbpWhite} DZD ⬜ ⬛ ${gbpBlack} DZD ⬛ 
+            `)
             .setColor("Blue")
 
         await interaction.editReply({ embeds: [embed] })
